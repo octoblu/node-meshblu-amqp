@@ -14,7 +14,7 @@ describe '->whoami', ->
     @client = new Client options
     @client.connect 'amqp://meshblu:05539223b927d3091eb1d53dcb31a6ff92cc8edf@192.168.99.100'
       .then =>
-        @client.createReceiver('meshblu.requests')
+        @client.createReceiver('meshblu.request')
       .then (@receiver) =>
         done()
         return true
@@ -26,7 +26,6 @@ describe '->whoami', ->
   beforeEach ->
     @receiver.on 'message', (message) =>
       @client.createSender(message.properties.replyTo).then (sender) =>
-        console.log 'recv: meshblu ', message
         options =
           properties:
             correlationId: message.properties.correlationId

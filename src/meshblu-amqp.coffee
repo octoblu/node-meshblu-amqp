@@ -16,7 +16,7 @@ class MeshbluAmqp
     @client.connect "amqp://#{@uuid}:#{@token}@192.168.99.100"
       .then =>
         Promise.all [
-          @client.createSender("meshblu.requests")
+          @client.createSender()
           @client.createReceiver(@queueName)
         ]
       .spread (@sender,@receiver) =>
@@ -29,10 +29,9 @@ class MeshbluAmqp
   whoami: (callback) =>
     requestId = uuid.v4()
     onMessage = (message) =>
-      console.log 'whoami: ', message, requestId
       if message.properties.correlationId == requestId
-        callback null, message.body
         @receiver.removeListener 'message', onMessage
+        callback null, message.body
 
     options =
       properties:
