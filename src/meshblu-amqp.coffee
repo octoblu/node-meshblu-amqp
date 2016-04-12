@@ -4,19 +4,22 @@ uuid = require 'uuid'
 
 class MeshbluAmqp
   constructor: ({@uuid, @token})->
+    @queueName = "#{@uuid}.#{uuid.v4()}"
 
   connect: (callback) =>
     options =
       reconnect:
         forever: false
         retries: 0
+
     @client = new Client options
     @client.connect "amqp://#{@uuid}:#{@token}@192.168.99.100"
       .then =>
         Promise.all [
-          @client.createSender("/request/queue")
+          @client.createSender("meshblu.requests")
+          @client.createReceiver(@queueName)
         ]
-      .spread (@sender) =>
+      .spread (@sender,@receiver) =>
         callback()
       .catch (error) =>
         callback error
@@ -25,21 +28,23 @@ class MeshbluAmqp
 
   whoami: (callback) =>
     requestId = uuid.v4()
-    @client.createReceiver("#{@uuid}.response.#{requestId}")
-      .then (receiver) =>
-        receiver.on 'message', (message) =>
-          callback null, message.body
+    onMessage = (message) =>
+      console.log 'whoami: ', message, requestId
+      if message.properties.correlationId == requestId
+        callback null, message.body
+        @receiver.removeListener 'message', onMessage
 
-        options =
-          properties:
-            replyTo: "#{@uuid}.response.#{requestId}"
-          applicationProperties:
-            metadata:
-              jobType: 'GetDevice'
-              toUuid: 'abcd'
+    options =
+      properties:
+        replyTo: @queueName
+        subject: 'meshblu.request'
+        correlationId: requestId
+        userId: @uuid
+      applicationProperties:
+        jobType: 'GetDevice'
+        toUuid: 'abcd'
 
-        @sender.send {}, options
-      .catch callback
-
+    @receiver.on 'message', onMessage
+    @sender.send {}, options
 
 module.exports = MeshbluAmqp

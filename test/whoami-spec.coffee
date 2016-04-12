@@ -2,19 +2,20 @@
 Promise = require 'bluebird'
 MeshbluAmqp = require '../'
 uuid = require 'uuid'
+# amqp = require ''
 
 describe '->whoami', ->
   beforeEach (done) ->
-    options = reconnect:
-      forever: false
-      retries: 0
+    options =
+      reconnect:
+        forever: false
+        retries: 0
+
     @client = new Client options
     @client.connect 'amqp://meshblu:05539223b927d3091eb1d53dcb31a6ff92cc8edf@192.168.99.100'
       .then =>
-        Promise.all [
-          @client.createReceiver('/request/queue')
-        ]
-      .spread (@receiver) =>
+        @client.createReceiver('meshblu.requests')
+      .then (@receiver) =>
         done()
         return true
       .catch (error) =>
@@ -25,7 +26,14 @@ describe '->whoami', ->
   beforeEach ->
     @receiver.on 'message', (message) =>
       @client.createSender(message.properties.replyTo).then (sender) =>
-        sender.send {uuid: 'foo', online: true}
+        console.log 'recv: meshblu ', message
+        options =
+          properties:
+            correlationId: message.properties.correlationId
+          applicationProperties:
+            code: 200
+
+        sender.send {uuid: 'foo', online: true}, options
 
   beforeEach (done) ->
     @sut = new MeshbluAmqp uuid: 'e6352208-79a4-4bb1-8724-c5c18b7eef8a', token: '24a799fab1d5eba3fe430c2464487fbe3e2f2a0d'
