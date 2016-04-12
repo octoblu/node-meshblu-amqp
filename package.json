@@ -22,7 +22,10 @@
   "homepage": "https://github.com/octoblu/node-meshblu-amqp#readme",
   "dependencies": {
     "amqp10": "^3.1.4",
-    "bluebird": "^3.3.4"
+    "bluebird": "^3.3.4",
+    "coffee-script": "^1.10.0",
+    "lodash": "^4.10.0",
+    "uuid": "^2.0.1"
   },
   "devDependencies": {
     "chai": "^3.5.0",
