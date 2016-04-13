@@ -1,3 +1,4 @@
+_ = require 'lodash'
 {Client} = require 'amqp10'
 Promise = require 'bluebird'
 uuid = require 'uuid'
@@ -35,61 +36,43 @@ class MeshbluAmqp
       .error (error) =>
         callback error
 
-  message: (message, callback) =>
-    request =
-      metadata:
-        jobType: 'SendMessage'
-      rawData: JSON.stringify message
+  message: (data, callback) =>
+    @_makeJob 'SendMessage', {}, data, callback
 
-    @_do request, callback
+  createSessionToken: (uuid, data, callback) =>
+    @_makeJob 'CreateSessionToken', toUuid: uuid, data, callback
 
-  createSessionToken: (toUuid, tags, callback) =>
-    metadata =
-      toUuid: toUuid
+  register: (data, callback) =>
+    @_makeJob 'RegisterDevice', {}, data, callback
 
-    @_JobSetRequest metadata, tags, 'CreateSessionToken', callback
-
-  register: (opts, callback) =>
-    @_JobSetRequest {}, opts, 'RegisterDevice', callback
-
-  searchDevices: (uuid, query={}, callback) =>
-    metadata =
-      fromUuid: uuid
-    @_JobSetRequest metadata, query, 'SearchDevices', callback
+  searchDevices: (uuid, data={}, callback) =>
+    @_makeJob 'SearchDevices', fromUuid: uuid, data, callback
 
   status: (callback) =>
-    request =
-      metadata:
-        jobType: 'GetStatus'
+    @_makeJob 'GetStatus', {}, {}, callback
 
-    @_do request, callback
+  subscribe: (uuid, data, callback) =>
+    @_makeJob 'CreateSubscription', toUuid: uuid, data, callback
 
-  subscribe: (uuid, opts, callback) =>
-    metadata =
-      toUuid: uuid
-    @_JobSetRequest metadata, opts, 'CreateSubscription', callback
+  unsubscribe: (uuid, data, callback) =>
+    @_makeJob 'DeleteSubscription', toUuid: uuid, opts, callback
 
-  unsubscribe: (uuid, opts, callback) =>
-    @subscribe uuid, opts, callback
-
-  update: (uuid, query, callback) =>
-    request =
-      metadata:
-        jobType: 'UpdateDevice'
-        toUuid: uuid
-      rawData: JSON.stringify query
-
-    @_do request, callback
+  update: (uuid, data, callback) =>
+    @_makeJob 'UpdateDevice', toUuid: uuid, data, callback
 
   whoami: (callback) =>
-    request =
-      metadata:
-        jobType: 'GetDevice'
-        toUuid: @uuid
+    @_makeJob 'GetDevice', toUuid: @uuid, null, callback
 
-    @_do request, callback
+  _makeJob: (jobType, metadata, data, callback) =>
+    metadata = _.clone metadata || {}
+    metadata.jobType = jobType
+    if data?
+      rawData = JSON.stringify data
+    job = {metadata, rawData}
 
-  _do: (request, callback) =>
+    @_do job, callback
+
+  _do: (job, callback) =>
     requestId = uuid.v4()
     onMessage = (message) =>
       if message.properties.correlationId == requestId
@@ -102,7 +85,7 @@ class MeshbluAmqp
         subject: 'meshblu.request'
         correlationId: requestId
         userId: @uuid
-      applicationProperties: request.metadata
+      applicationProperties: job.metadata
 
     @receiver.on 'message', onMessage
     @sender.send request.rawData || {}, options
