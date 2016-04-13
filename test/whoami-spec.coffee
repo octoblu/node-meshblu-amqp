@@ -2,45 +2,48 @@
 Promise = require 'bluebird'
 MeshbluAmqp = require '../'
 uuid = require 'uuid'
-# amqp = require ''
 
-describe '->whoami', ->
-  beforeEach (done) ->
-    options =
-      reconnect:
-        forever: false
-        retries: 0
+describe '-> whoami', ->
+  describe 'with an active connection', ->
+    beforeEach (done) ->
+      options =
+        reconnect:
+          forever: false
+          retries: 0
 
-    @client = new Client options
-    @client.connect 'amqp://meshblu:05539223b927d3091eb1d53dcb31a6ff92cc8edf@192.168.99.100'
-      .then =>
-        @client.createReceiver('meshblu.request')
-      .then (@receiver) =>
-        done()
-        return true
-      .catch (error) =>
-        done error
-      .error (error) =>
-        done error
+      @client = new Client options
+      @client.connect 'amqp://meshblu:judgementday@127.0.0.1'
+        .then =>
+          @client.createReceiver('meshblu.request')
+        .then (@receiver) =>
+          done()
+          return true
+        .catch (error) =>
+          done error
+        .error (error) =>
+          done error
 
-  beforeEach ->
-    @receiver.on 'message', (message) =>
-      @client.createSender(message.properties.replyTo).then (sender) =>
-        options =
-          properties:
-            correlationId: message.properties.correlationId
-          applicationProperties:
-            code: 200
+    beforeEach ->
+      @receiver.on 'message', (@message) =>
+        @client.createSender(@message.properties.replyTo).then (sender) =>
+          options =
+            properties:
+              correlationId: @message.properties.correlationId
+            applicationProperties:
+              code: 200
 
-        sender.send {uuid: 'foo', online: true}, options
+          sender.send {uuid: @message.applicationProperties.toUuid, online: true}, options
 
-  beforeEach (done) ->
-    @sut = new MeshbluAmqp uuid: 'e6352208-79a4-4bb1-8724-c5c18b7eef8a', token: '24a799fab1d5eba3fe430c2464487fbe3e2f2a0d'
-    @sut.connect (error) =>
-      return done error if error?
-      @sut.whoami (error, @data) =>
+    beforeEach (done) ->
+      @sut = new MeshbluAmqp uuid: 'some-uuid', token: 'some-token', hostname: '127.0.0.1'
+      @sut.connect (error) =>
         return done error if error?
-        done()
+        @sut.whoami (error, @data) =>
+          return done error if error?
+          done()
 
-  it 'should return the device', ->
-    expect(@data).to.deep.equal {uuid: 'foo', online: true}
+    it 'should sent a proper request', ->
+      expect(@message.body).to.deep.equal {}
+
+    it 'should return the device', ->
+      expect(@data).to.deep.equal {uuid: 'some-uuid', online: true}
