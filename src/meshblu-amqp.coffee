@@ -36,26 +36,31 @@ class MeshbluAmqp
       .error (error) =>
         callback error
 
+  close: (callback) =>
+    @client.disconnect()
+      .then callback
+      .catch callback
+
   message: (data, callback) =>
-    @_makeJob 'SendMessage', {}, data, callback
+    @_makeJob 'SendMessage', null, data, callback
 
   createSessionToken: (uuid, data, callback) =>
     @_makeJob 'CreateSessionToken', toUuid: uuid, data, callback
 
   register: (data, callback) =>
-    @_makeJob 'RegisterDevice', {}, data, callback
+    @_makeJob 'RegisterDevice', null, data, callback
 
   searchDevices: (uuid, data={}, callback) =>
     @_makeJob 'SearchDevices', fromUuid: uuid, data, callback
 
   status: (callback) =>
-    @_makeJob 'GetStatus', {}, {}, callback
+    @_makeJob 'GetStatus', null, null, callback
 
   subscribe: (uuid, data, callback) =>
-    @_makeJob 'CreateSubscription', toUuid: uuid, data, callback
+    @_makeJob 'CreateSubscription', null, data, callback
 
   unsubscribe: (uuid, data, callback) =>
-    @_makeJob 'DeleteSubscription', toUuid: uuid, opts, callback
+    @_makeJob 'DeleteSubscription', null, data, callback
 
   update: (uuid, data, callback) =>
     @_makeJob 'UpdateDevice', toUuid: uuid, data, callback
@@ -66,6 +71,7 @@ class MeshbluAmqp
   _makeJob: (jobType, metadata, data, callback) =>
     metadata = _.clone metadata || {}
     metadata.jobType = jobType
+    metadata.auth = {@uuid, @token}
     if data?
       rawData = JSON.stringify data
     job = {metadata, rawData}
@@ -88,6 +94,6 @@ class MeshbluAmqp
       applicationProperties: job.metadata
 
     @receiver.on 'message', onMessage
-    @sender.send request.rawData || {}, options
+    @sender.send job.rawData || {}, options
 
 module.exports = MeshbluAmqp

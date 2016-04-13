@@ -9,6 +9,9 @@ describe '-> whoami', ->
       return done error if error?
       done()
 
+  afterEach (done) ->
+    @testWorker.close done
+
   beforeEach ->
     @receiver.on 'message', (@message) =>
       @client.createSender(@message.properties.replyTo).then (sender) =>
@@ -29,7 +32,14 @@ describe '-> whoami', ->
         done()
 
   it 'should sent a proper request', ->
-    expect(@message.body).to.deep.equal {}
+    expectedProperties =
+      jobType: 'GetDevice'
+      toUuid: 'some-uuid'
+      auth:
+        uuid: 'some-uuid'
+        token: 'some-token'
+
+    expect(@message.applicationProperties).to.containSubset expectedProperties
 
   it 'should return the device', ->
     expect(@data).to.deep.equal {uuid: 'some-uuid', online: true}

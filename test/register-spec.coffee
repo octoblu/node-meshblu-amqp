@@ -4,7 +4,7 @@ MeshbluAmqp = require '../'
 uuid = require 'uuid'
 TestWorker = require './test-worker'
 
-describe '-> subscribe', ->
+describe '-> register', ->
   beforeEach (done) ->
     @testWorker = new TestWorker
     @testWorker.connect (error, {@client, @receiver}) =>
@@ -21,32 +21,30 @@ describe '-> subscribe', ->
           properties:
             correlationId: @message.properties.correlationId
           applicationProperties:
-            code: 201
+            code: 200
 
-        sender.send {}, options
+        sender.send [foo: true, uuid: 'foo-uuid'], options
 
   beforeEach (done) ->
     @sut = new MeshbluAmqp uuid: 'some-uuid', token: 'some-token', hostname: '127.0.0.1'
     @sut.connect (error) =>
       return done error if error?
-      @sut.subscribe 'some-other-uuid', emitterUuid: 'some-uuid', subscriberUuid: 'some-uuid', type: 'message.sent', (error, @data) =>
+      @sut.register foo: true, (error, @data) =>
         return done error if error?
         done()
 
   it 'should sent a proper request', ->
     expectedProperties =
-      jobType: 'CreateSubscription'
+      jobType: 'RegisterDevice'
       auth:
         uuid: 'some-uuid'
         token: 'some-token'
 
     expectedBody =
-      type: 'message.sent'
-      emitterUuid: 'some-uuid'
-      subscriberUuid: 'some-uuid'
+      foo: true
 
     expect(@message.applicationProperties).to.containSubset expectedProperties
     expect(JSON.parse @message.body).to.deep.equal expectedBody
 
-  it 'should return no data', ->
-    expect(@data).to.deep.equal {}
+  it 'should return the results', ->
+    expect(@data).to.deep.equal [{foo: true, uuid: 'foo-uuid'}]

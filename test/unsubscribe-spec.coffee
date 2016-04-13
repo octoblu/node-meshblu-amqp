@@ -4,7 +4,7 @@ MeshbluAmqp = require '../'
 uuid = require 'uuid'
 TestWorker = require './test-worker'
 
-describe '-> subscribe', ->
+describe '-> unsubscribe', ->
   beforeEach (done) ->
     @testWorker = new TestWorker
     @testWorker.connect (error, {@client, @receiver}) =>
@@ -29,13 +29,13 @@ describe '-> subscribe', ->
     @sut = new MeshbluAmqp uuid: 'some-uuid', token: 'some-token', hostname: '127.0.0.1'
     @sut.connect (error) =>
       return done error if error?
-      @sut.subscribe 'some-other-uuid', emitterUuid: 'some-uuid', subscriberUuid: 'some-uuid', type: 'message.sent', (error, @data) =>
+      @sut.unsubscribe 'some-other-uuid', emitterUuid: 'some-uuid', subscriberUuid: 'some-uuid', type: 'message.sent', (error, @data) =>
         return done error if error?
         done()
 
   it 'should sent a proper request', ->
     expectedProperties =
-      jobType: 'CreateSubscription'
+      jobType: 'DeleteSubscription'
       auth:
         uuid: 'some-uuid'
         token: 'some-token'
