@@ -31,6 +31,7 @@ class MeshbluAmqp
         ]
       .spread (@sender,@receiver) =>
         callback()
+        return true # oh, promises
       .catch (error) =>
         callback error
       .error (error) =>
