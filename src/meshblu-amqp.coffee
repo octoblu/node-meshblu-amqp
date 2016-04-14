@@ -3,10 +3,12 @@ _ = require 'lodash'
 Promise = require 'bluebird'
 uuid = require 'uuid'
 URL = require 'url'
+{EventEmitter2} = require 'eventemitter2'
 
-class MeshbluAmqp
+class MeshbluAmqp extends EventEmitter2
   constructor: ({@uuid, @token, @hostname, @port})->
     @queueName = "#{@uuid}.#{uuid.v4()}"
+    @firehoseQueueName = "#{@uuid}.firehose.#{uuid.v4()}"
 
   connect: (callback) =>
     options =
@@ -41,6 +43,17 @@ class MeshbluAmqp
     @client.disconnect()
       .then callback
       .catch callback
+
+  connectFirehose: (callback) =>
+    @client.createReceiver @firehoseQueueName
+      .then (@firehose) =>
+        @firehose.on 'message', @_onMessage
+        @_sendConnectFirehose callback
+      .catch callback
+
+  disconnectFirehose: (callback) =>
+    return callback() unless @firehose?
+    @_sendDisconnectFirehose callback
 
   message: (data, callback) =>
     @_makeJob 'SendMessage', null, data, callback
@@ -79,6 +92,13 @@ class MeshbluAmqp
 
     @_do job, callback
 
+  _onMessage: (message) =>
+    newMessage =
+      metadata: {}
+      rawData: message.body
+
+    @emit 'message', newMessage
+
   _do: (job, callback) =>
     requestId = uuid.v4()
     onMessage = (message) =>
@@ -96,5 +116,41 @@ class MeshbluAmqp
 
     @receiver.on 'message', onMessage
     @sender.send job.rawData || {}, options
+
+  _sendConnectFirehose: (callback) =>
+    requestId = uuid.v4()
+    options =
+      properties:
+        replyTo: @firehoseQueueName
+        subject: 'meshblu.firehose.request'
+        correlationId: requestId
+        userId: @uuid
+      applicationProperties:
+        jobType: 'ConnectFirehose'
+        toUuid: @uuid
+
+    @sender.send({}, options)
+      .then =>
+        callback()
+        return true # promises
+      .catch callback
+
+  _sendDisconnectFirehose: (callback) =>
+    requestId = uuid.v4()
+    options =
+      properties:
+        replyTo: @firehoseQueueName
+        subject: 'meshblu.firehose.request'
+        correlationId: requestId
+        userId: @uuid
+      applicationProperties:
+        jobType: 'DisconnectFirehose'
+        toUuid: @uuid
+
+    @sender.send({}, options)
+      .then =>
+        callback()
+        return true # promises
+      .catch callback
 
 module.exports = MeshbluAmqp
