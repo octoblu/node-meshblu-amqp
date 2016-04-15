@@ -17,7 +17,7 @@ describe '-> firehose', ->
 
   afterEach (done) ->
     @sut.disconnectFirehose done
-    
+
   afterEach (done) ->
     @testConnector.close done
 
@@ -31,7 +31,7 @@ describe '-> firehose', ->
     @sut.on 'message', (@message) =>
       done()
 
-    async.until (=> @testConnector.hydrantConnected), ((cb) => setTimeout(cb, 50)), =>
+    async.until (=> _.includes @members, @client.firehoseQueueName), checkList, (error) =>
       redisClient = new RedisNS 'messages', redis.createClient()
       redisClient.on 'ready', =>
         redisClient.publish 'some-uuid', JSON.stringify(foo: 'bar'), (error, published) =>
