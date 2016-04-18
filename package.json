@@ -1,6 +1,6 @@
 {
   "name": "meshblu-amqp",
-  "version": "v1.4",
+  "version": "1.4",
   "description": "AMQP client for Meshblu",
   "main": "index.js",
   "scripts": {
