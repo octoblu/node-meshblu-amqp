@@ -95,7 +95,12 @@ class MeshbluAmqp extends EventEmitter2
   _onMessage: (message) =>
     newMessage =
       metadata: message.applicationProperties
-      rawData: message.body
+
+    if message.rawData?
+      try
+        newMessage.data = JSON.parse message.rawData
+      catch
+        newMessage.rawData = message.rawData
 
     @emit 'message', newMessage
 
