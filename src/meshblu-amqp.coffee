@@ -71,10 +71,10 @@ class MeshbluAmqp extends EventEmitter2
     @_makeJob 'GetStatus', null, null, callback
 
   subscribe: (uuid, data, callback) =>
-    @_makeJob 'CreateSubscription', null, data, callback
+    @_makeJob 'CreateSubscription', toUuid: uuid, data, callback
 
   unsubscribe: (uuid, data, callback) =>
-    @_makeJob 'DeleteSubscription', null, data, callback
+    @_makeJob 'DeleteSubscription', toUuid: uuid, data, callback
 
   update: (uuid, data, callback) =>
     @_makeJob 'UpdateDevice', toUuid: uuid, data, callback
