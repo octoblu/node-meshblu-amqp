@@ -34,15 +34,12 @@ class MeshbluAmqp extends EventEmitter2
       .spread (@sender,@receiver) =>
         callback()
         return true # oh, promises
-      .catch (error) =>
-        callback error
-      .error (error) =>
-        callback error
+      .catch callback
+      .error callback
 
   close: (callback) =>
-    @client.disconnect()
-      .then callback
-      .catch callback
+    @disconnectFirehose =>
+      @client.disconnect().asCallback callback
 
   connectFirehose: (callback) =>
     @client.createReceiver @firehoseQueueName
@@ -50,6 +47,7 @@ class MeshbluAmqp extends EventEmitter2
         @firehose.on 'message', @_onMessage
         @_sendConnectFirehose callback
       .catch callback
+      .error callback
 
   disconnectFirehose: (callback) =>
     return callback() unless @firehose?
@@ -63,6 +61,9 @@ class MeshbluAmqp extends EventEmitter2
 
   register: (data, callback) =>
     @_makeJob 'RegisterDevice', null, data, callback
+
+  unregister: (uuid, callback) =>
+    @_makeJob 'UnregisterDevice', toUuid: uuid, null, callback
 
   searchDevices: (uuid, data={}, callback) =>
     @_makeJob 'SearchDevices', fromUuid: uuid, data, callback
