@@ -90,7 +90,13 @@ class MeshbluAmqp extends EventEmitter2
       rawData = JSON.stringify data
     job = {metadata, rawData}
 
-    @_do job, callback
+    @_do job, (error, rawData) =>
+      return callback error if error?
+      try
+        data = JSON.parse rawData
+      catch error
+        data = rawData
+      callback error, data
 
   _onMessage: (message) =>
     newMessage =
