@@ -90,13 +90,7 @@ class MeshbluAmqp extends EventEmitter2
       rawData = JSON.stringify data
     job = {metadata, rawData}
 
-    @_do job, (error, rawData) =>
-      return callback error if error?
-      try
-        data = JSON.parse rawData
-      catch error
-        data = rawData
-      callback error, data
+    @_do job, callback
 
   _onMessage: (message) =>
     newMessage =
@@ -114,8 +108,12 @@ class MeshbluAmqp extends EventEmitter2
     requestId = uuid.v4()
     onMessage = (message) =>
       if message.properties.correlationId == requestId
+        try
+          data = JSON.parse message.body
+        catch
+          data = message.body
         @receiver.removeListener 'message', onMessage
-        callback null, message.body
+        callback null, data
 
     options =
       properties:
